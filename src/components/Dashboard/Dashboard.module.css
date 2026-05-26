@@ -145,3 +145,28 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .container {
+    gap: 16px;
+  }
+  .greeting {
+    font-size: 20px;
+  }
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .statCard {
+    padding: 14px;
+  }
+  .statValue {
+    font-size: 22px;
+  }
+  .bottomGrid {
+    gap: 10px;
+  }
+  .card {
+    padding: 14px;
+  }
+}

@@ -16,8 +16,21 @@ import Settings from './components/Settings/Settings';
 import { useApp } from './context/AppContext';
 import styles from './App.module.css';
 
+const VIEW_LABELS = {
+  dashboard: 'Dashboard',
+  habits: 'Hábitos',
+  todo: 'To-Do',
+  sleep: 'Sueño',
+  microvictories: 'Microvictorias',
+  diary: 'Diario',
+  calendar: 'Calendario',
+  progress: 'Progreso',
+  settings: 'Ajustes',
+};
+
 function AppContent() {
   const { currentView, dataLoaded } = useApp();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (!dataLoaded) {
     return (
@@ -42,10 +55,32 @@ function AppContent() {
 
   return (
     <div className={styles.layout}>
-      <Sidebar />
-      <main className={styles.main}>
-        {views[currentView] || <Dashboard />}
-      </main>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className={styles.overlay} onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <div className={styles.contentArea}>
+        {/* Mobile top bar */}
+        <div className={styles.topBar}>
+          <button
+            className={styles.hamburger}
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menú"
+          >
+            ☰
+          </button>
+          <span className={styles.topBarTitle}>
+            {VIEW_LABELS[currentView] || 'Life Tracker'}
+          </span>
+        </div>
+
+        <main className={styles.main}>
+          {views[currentView] || <Dashboard />}
+        </main>
+      </div>
     </div>
   );
 }

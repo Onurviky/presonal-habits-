@@ -307,3 +307,23 @@
   color: var(--accent);
   opacity: 0.5;
 }
+
+@media (max-width: 768px) {
+  .container {
+    gap: 14px;
+  }
+  .header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .formCard {
+    padding: 14px;
+  }
+  .habitRow {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .habitName {
+    font-size: 13px;
+  }
+}

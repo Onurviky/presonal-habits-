@@ -488,3 +488,26 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .container {
+    gap: 16px;
+  }
+  .header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .headerActions {
+    flex-wrap: wrap;
+  }
+  .calendarPanel {
+    padding: 14px;
+  }
+  .eventsPanel {
+    padding: 14px;
+  }
+  .dayCell {
+    min-height: 36px;
+    font-size: 12px;
+  }
+}

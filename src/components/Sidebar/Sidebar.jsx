@@ -16,10 +16,15 @@ const NAV_ITEMS = [
   { id: 'settings',       label: 'Ajustes',          icon: '⚙' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }) {
   const { currentView, setCurrentView, activeDate, setActiveDate } = useApp();
   const { currentUser, logout } = useAuth();
   const [dateInput, setDateInput] = useState(activeDate);
+
+  function navigate(id) {
+    setCurrentView(id);
+    onClose?.();
+  }
 
   function goDay(n) {
     const next = addDays(activeDate, n);
@@ -42,11 +47,13 @@ export default function Sidebar() {
   const isToday = activeDate === getToday();
 
   return (
-    <aside className={styles.sidebar}>
+    <aside className={`${styles.sidebar} ${open ? styles.sidebarOpen : ''}`}>
       {/* Logo */}
       <div className={styles.logo}>
         <span className={styles.logoIcon}>⬡</span>
         <span className={styles.logoText}>Life Tracker</span>
+        {/* Mobile close button */}
+        <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar menú">✕</button>
       </div>
 
       {/* Navigation */}
@@ -55,7 +62,7 @@ export default function Sidebar() {
           <button
             key={item.id}
             className={`${styles.navItem} ${currentView === item.id ? styles.navItemActive : ''}`}
-            onClick={() => setCurrentView(item.id)}
+            onClick={() => navigate(item.id)}
           >
             <span className={styles.navIcon}>{item.icon}</span>
             <span className={styles.navLabel}>{item.label}</span>

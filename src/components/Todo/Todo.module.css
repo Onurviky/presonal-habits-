@@ -252,3 +252,26 @@
   color: var(--warning);
   opacity: 0.5;
 }
+
+@media (max-width: 768px) {
+  .container {
+    gap: 14px;
+  }
+  .header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .formRow {
+    flex-direction: column;
+  }
+  .filters {
+    gap: 8px;
+  }
+  .todoItem {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .todoText {
+    font-size: 13px;
+  }
+}

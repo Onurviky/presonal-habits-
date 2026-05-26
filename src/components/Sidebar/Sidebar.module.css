@@ -8,6 +8,7 @@
   flex-direction: column;
   padding: 24px 0;
   overflow-y: auto;
+  flex-shrink: 0;
 }
 
 .logo {
@@ -30,6 +31,24 @@
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.02em;
+  flex: 1;
+}
+
+.closeBtn {
+  display: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  line-height: 1;
+  transition: background var(--transition), color var(--transition);
+  margin-left: auto;
+}
+
+.closeBtn:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
 }
 
 .nav {
@@ -177,6 +196,7 @@
   text-align: center;
 }
 
+/* User section */
 .userSection {
   display: flex;
   align-items: center;
@@ -236,4 +256,35 @@
 .logoutBtn:hover {
   color: var(--danger);
   background: var(--danger-light);
+}
+
+/* ── Mobile ─────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.5);
+    width: 260px;
+    min-width: 260px;
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .closeBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .navItem {
+    padding: 11px 12px;
+    font-size: 14px;
+  }
 }
