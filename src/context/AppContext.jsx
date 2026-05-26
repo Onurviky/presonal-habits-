@@ -18,17 +18,40 @@ const DEFAULT_MICROVICTORIES = [
   { id: 'mv10', label: 'Me acosté temprano' },
 ];
 
-function loadLS(key, fallback) {
+const EMPTY_DATA = {
+  habits: [], habitLogs: {}, todos: [], sleepLogs: {},
+  microvictoriesBase: DEFAULT_MICROVICTORIES, microvictoryLogs: {},
+  diary: {}, userName: 'Amigo', events: [],
+};
+
+function lsKey(uid) { return `lt_data_v2_${uid}`; }
+
+function loadLS(uid) {
   try {
-    const val = localStorage.getItem(key);
-    return val !== null ? JSON.parse(val) : fallback;
-  } catch {
-    return fallback;
-  }
+    const raw = localStorage.getItem(lsKey(uid));
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
 }
 
-function saveLS(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+function saveLS(uid, data) {
+  try { localStorage.setItem(lsKey(uid), JSON.stringify(data)); } catch {}
+}
+
+function applyData(data, setters) {
+  const {
+    setHabits, setHabitLogs, setTodos, setSleepLogs,
+    setMicrovictoriesBase, setMicrovictoryLogs, setDiary,
+    setUserNameState, setEvents,
+  } = setters;
+  if (data.habits !== undefined) setHabits(data.habits);
+  if (data.habitLogs !== undefined) setHabitLogs(data.habitLogs);
+  if (data.todos !== undefined) setTodos(data.todos);
+  if (data.sleepLogs !== undefined) setSleepLogs(data.sleepLogs);
+  if (data.microvictoriesBase !== undefined) setMicrovictoriesBase(data.microvictoriesBase);
+  if (data.microvictoryLogs !== undefined) setMicrovictoryLogs(data.microvictoryLogs);
+  if (data.diary !== undefined) setDiary(data.diary);
+  if (data.userName !== undefined) setUserNameState(data.userName);
+  if (data.events !== undefined) setEvents(data.events);
 }
 
 export function AppProvider({ children, uid }) {
@@ -46,7 +69,6 @@ export function AppProvider({ children, uid }) {
   const [userName, setUserNameState] = useState('Amigo');
   const [events, setEvents] = useState([]);
 
-  // Refs for Firestore flush-on-unmount
   const saveTimer = useRef(null);
   const uidRef = useRef(uid);
   const dataLoadedRef = useRef(false);
@@ -55,91 +77,84 @@ export function AppProvider({ children, uid }) {
   useEffect(() => { uidRef.current = uid; }, [uid]);
   useEffect(() => { dataLoadedRef.current = dataLoaded; }, [dataLoaded]);
 
-  // ── Load from Firestore on login ──────────────────────────────────────────
+  const setters = { setHabits, setHabitLogs, setTodos, setSleepLogs, setMicrovictoriesBase, setMicrovictoryLogs, setDiary, setUserNameState, setEvents };
+
+  // ── Load on login ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!uid) return;
     setDataLoaded(false);
 
     async function loadData() {
+      const lsData = loadLS(uid);
+
+      let fsData = null;
       try {
         const snap = await getDoc(doc(db, 'users', uid));
-        if (snap.exists()) {
-          const d = snap.data();
-          if (d.habits !== undefined) setHabits(d.habits);
-          if (d.habitLogs !== undefined) setHabitLogs(d.habitLogs);
-          if (d.todos !== undefined) setTodos(d.todos);
-          if (d.sleepLogs !== undefined) setSleepLogs(d.sleepLogs);
-          if (d.microvictoriesBase !== undefined) setMicrovictoriesBase(d.microvictoriesBase);
-          if (d.microvictoryLogs !== undefined) setMicrovictoryLogs(d.microvictoryLogs);
-          if (d.diary !== undefined) setDiary(d.diary);
-          if (d.userName !== undefined) setUserNameState(d.userName);
-          if (d.events !== undefined) setEvents(d.events);
-        } else {
-          // New user — migrate localStorage if any data exists
-          const localDiary = loadLS(`lt_diary_${uid}`, loadLS('lt_diary', {}));
-          const localHabits = loadLS(`lt_habits_${uid}`, loadLS('lt_habits', []));
-          const localTodos = loadLS(`lt_todos_${uid}`, loadLS('lt_todos', []));
-          const hasData =
-            Object.keys(localDiary).length > 0 ||
-            localHabits.length > 0 ||
-            localTodos.length > 0;
-          if (hasData) {
-            setHabits(localHabits);
-            setHabitLogs(loadLS(`lt_habitLogs_${uid}`, loadLS('lt_habitLogs', {})));
-            setTodos(localTodos);
-            setSleepLogs(loadLS(`lt_sleepLogs_${uid}`, loadLS('lt_sleepLogs', {})));
-            setMicrovictoriesBase(loadLS(`lt_microvictoriesBase_${uid}`, loadLS('lt_microvictoriesBase', DEFAULT_MICROVICTORIES)));
-            setMicrovictoryLogs(loadLS(`lt_microvictoryLogs_${uid}`, loadLS('lt_microvictoryLogs', {})));
-            setDiary(localDiary);
-            setUserNameState(loadLS(`lt_userName_${uid}`, loadLS('lt_userName', 'Amigo')));
-            setEvents(loadLS(`lt_events_${uid}`, loadLS('lt_events', [])));
-          }
-        }
+        if (snap.exists()) fsData = snap.data();
       } catch (err) {
-        // Firestore failed (offline?) — fall back to localStorage
-        console.warn('Firestore load failed, using localStorage backup', err);
-        setHabits(loadLS(`lt_habits_${uid}`, []));
-        setHabitLogs(loadLS(`lt_habitLogs_${uid}`, {}));
-        setTodos(loadLS(`lt_todos_${uid}`, []));
-        setSleepLogs(loadLS(`lt_sleepLogs_${uid}`, {}));
-        setMicrovictoriesBase(loadLS(`lt_microvictoriesBase_${uid}`, DEFAULT_MICROVICTORIES));
-        setMicrovictoryLogs(loadLS(`lt_microvictoryLogs_${uid}`, {}));
-        setDiary(loadLS(`lt_diary_${uid}`, {}));
-        setUserNameState(loadLS(`lt_userName_${uid}`, 'Amigo'));
-        setEvents(loadLS(`lt_events_${uid}`, []));
+        console.warn('Firestore load failed:', err.code || err.message);
       }
+
+      // Pick the most recent source by lastModified timestamp
+      const fsTime = fsData?.lastModified ?? 0;
+      const lsTime = lsData?.lastModified ?? 0;
+
+      let chosen = null;
+      if (fsData && lsData) {
+        chosen = fsTime >= lsTime ? fsData : lsData;
+      } else if (fsData) {
+        chosen = fsData;
+      } else if (lsData) {
+        chosen = lsData;
+      }
+
+      if (chosen) {
+        applyData(chosen, setters);
+      } else {
+        // Brand new user — try migrating old localStorage keys
+        const oldHabits = tryLoadOld('lt_habits');
+        const oldDiary  = tryLoadOld('lt_diary');
+        const oldTodos  = tryLoadOld('lt_todos');
+        if (oldHabits?.length || Object.keys(oldDiary ?? {}).length || oldTodos?.length) {
+          applyData({
+            habits: oldHabits ?? [],
+            habitLogs: tryLoadOld('lt_habitLogs') ?? {},
+            todos: oldTodos ?? [],
+            sleepLogs: tryLoadOld('lt_sleepLogs') ?? {},
+            microvictoriesBase: tryLoadOld('lt_microvictoriesBase') ?? DEFAULT_MICROVICTORIES,
+            microvictoryLogs: tryLoadOld('lt_microvictoryLogs') ?? {},
+            diary: oldDiary ?? {},
+            userName: tryLoadOld('lt_userName') ?? 'Amigo',
+            events: tryLoadOld('lt_events') ?? [],
+          }, setters);
+        }
+      }
+
       setDataLoaded(true);
     }
 
     loadData();
-  }, [uid]);
+  }, [uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Save on every data change ─────────────────────────────────────────────
+  // ── Save on every change ──────────────────────────────────────────────────
   useEffect(() => {
     if (!uid || !dataLoaded) return;
 
     const data = {
       habits, habitLogs, todos, sleepLogs,
       microvictoriesBase, microvictoryLogs, diary, userName, events,
+      lastModified: Date.now(),
     };
 
-    // 1. localStorage: immediate, synchronous backup per user
-    saveLS(`lt_habits_${uid}`, habits);
-    saveLS(`lt_habitLogs_${uid}`, habitLogs);
-    saveLS(`lt_todos_${uid}`, todos);
-    saveLS(`lt_sleepLogs_${uid}`, sleepLogs);
-    saveLS(`lt_microvictoriesBase_${uid}`, microvictoriesBase);
-    saveLS(`lt_microvictoryLogs_${uid}`, microvictoryLogs);
-    saveLS(`lt_diary_${uid}`, diary);
-    saveLS(`lt_userName_${uid}`, userName);
-    saveLS(`lt_events_${uid}`, events);
-
-    // 2. Firestore: debounced for cross-device sync
+    // 1. localStorage — immediate, synchronous
+    saveLS(uid, data);
     latestDataRef.current = data;
+
+    // 2. Firestore — debounced 500ms for cross-device sync
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       setDoc(doc(db, 'users', uid), data).catch(err =>
-        console.error('Firestore save error:', err)
+        console.error('Firestore save error:', err.code || err.message)
       );
     }, 500);
 
@@ -150,13 +165,12 @@ export function AppProvider({ children, uid }) {
     return () => {
       clearTimeout(saveTimer.current);
       const u = uidRef.current;
-      const loaded = dataLoadedRef.current;
       const data = latestDataRef.current;
-      if (u && loaded && data) {
+      if (u && data) {
         setDoc(doc(db, 'users', u), data).catch(() => {});
       }
     };
-  }, []); // runs only on unmount
+  }, []);
 
   // ── Habits ────────────────────────────────────────────────────────────────
   const addHabit = useCallback((data) => {
@@ -204,9 +218,7 @@ export function AppProvider({ children, uid }) {
         const d = new Date(date + 'T00:00:00');
         d.setDate(d.getDate() - 1);
         date = d.toISOString().split('T')[0];
-      } else {
-        break;
-      }
+      } else break;
     }
     return streak;
   }, [habitLogs]);
@@ -218,8 +230,7 @@ export function AppProvider({ children, uid }) {
     const todayDay = now.getDate();
     let completed = 0;
     for (let d = 1; d <= todayDay; d++) {
-      const key = `${y}-${m}-${String(d).padStart(2, '0')}`;
-      if (habitLogs[key]?.[habitId]) completed++;
+      if (habitLogs[`${y}-${m}-${String(d).padStart(2, '0')}`]?.[habitId]) completed++;
     }
     return todayDay > 0 ? Math.round((completed / todayDay) * 100) : 0;
   }, [habitLogs]);
@@ -227,8 +238,7 @@ export function AppProvider({ children, uid }) {
   const getDayHabitCompletion = useCallback((date) => {
     if (!habits.length) return 0;
     const log = habitLogs[date] || {};
-    const done = habits.filter(h => log[h.id]).length;
-    return Math.round((done / habits.length) * 100);
+    return Math.round((habits.filter(h => log[h.id]).length / habits.length) * 100);
   }, [habits, habitLogs]);
 
   // ── Todos ─────────────────────────────────────────────────────────────────
@@ -357,11 +367,7 @@ export function AppProvider({ children, uid }) {
   const setUserName = useCallback((name) => setUserNameState(name), []);
 
   const exportData = useCallback(() => {
-    const data = {
-      habits, habitLogs, todos, sleepLogs,
-      microvictoriesBase, microvictoryLogs, diary, userName, events,
-      exportedAt: new Date().toISOString(),
-    };
+    const data = { habits, habitLogs, todos, sleepLogs, microvictoriesBase, microvictoryLogs, diary, userName, events, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -384,15 +390,9 @@ export function AppProvider({ children, uid }) {
   }, []);
 
   const resetAllData = useCallback(() => {
-    setHabits([]);
-    setHabitLogs({});
-    setTodos([]);
-    setSleepLogs({});
-    setMicrovictoriesBase(DEFAULT_MICROVICTORIES);
-    setMicrovictoryLogs({});
-    setDiary({});
-    setUserNameState('Amigo');
-    setEvents([]);
+    setHabits([]); setHabitLogs({}); setTodos([]); setSleepLogs({});
+    setMicrovictoriesBase(DEFAULT_MICROVICTORIES); setMicrovictoryLogs({});
+    setDiary({}); setUserNameState('Amigo'); setEvents([]);
   }, []);
 
   const value = {
@@ -414,6 +414,13 @@ export function AppProvider({ children, uid }) {
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
+
+function tryLoadOld(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
 }
 
 export function useApp() {
