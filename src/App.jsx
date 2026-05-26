@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
+import Login from './components/Auth/Login';
+import Register from './components/Auth/Register';
 import Sidebar from './components/Sidebar/Sidebar';
 import Dashboard from './components/Dashboard/Dashboard';
 import Habits from './components/Habits/Habits';
@@ -14,7 +17,16 @@ import { useApp } from './context/AppContext';
 import styles from './App.module.css';
 
 function AppContent() {
-  const { currentView } = useApp();
+  const { currentView, dataLoaded } = useApp();
+
+  if (!dataLoaded) {
+    return (
+      <div className={styles.loadingScreen}>
+        <span className={styles.loadingIcon}>⬡</span>
+        <p className={styles.loadingText}>Cargando datos...</p>
+      </div>
+    );
+  }
 
   const views = {
     dashboard: <Dashboard />,
@@ -38,10 +50,27 @@ function AppContent() {
   );
 }
 
-export default function App() {
+function AuthGate() {
+  const { currentUser } = useAuth();
+  const [authView, setAuthView] = useState('login');
+
+  if (!currentUser) {
+    return authView === 'login'
+      ? <Login onSwitchToRegister={() => setAuthView('register')} />
+      : <Register onSwitchToLogin={() => setAuthView('login')} />;
+  }
+
   return (
-    <AppProvider>
+    <AppProvider uid={currentUser.uid}>
       <AppContent />
     </AppProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
   );
 }

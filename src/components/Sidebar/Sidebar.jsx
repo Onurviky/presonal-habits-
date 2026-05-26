@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { formatDisplayDate, addDays, getToday } from '../../utils/dateUtils';
 import styles from './Sidebar.module.css';
 
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const { currentView, setCurrentView, activeDate, setActiveDate } = useApp();
+  const { currentUser, logout } = useAuth();
   const [dateInput, setDateInput] = useState(activeDate);
 
   function goDay(n) {
@@ -92,6 +94,20 @@ export default function Sidebar() {
         {isToday && (
           <div className={styles.todayBadge}>● Hoy</div>
         )}
+      </div>
+
+      {/* User section */}
+      <div className={styles.userSection}>
+        <div className={styles.userAvatar}>
+          {(currentUser?.displayName || currentUser?.email || '?')[0].toUpperCase()}
+        </div>
+        <div className={styles.userInfo}>
+          <div className={styles.userName}>{currentUser?.displayName || 'Usuario'}</div>
+          <div className={styles.userEmail}>{currentUser?.email}</div>
+        </div>
+        <button className={styles.logoutBtn} onClick={logout} title="Cerrar sesión">
+          ⏻
+        </button>
       </div>
     </aside>
   );

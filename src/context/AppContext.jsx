@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { getToday } from '../utils/dateUtils';
 
 const AppContext = createContext(null);
@@ -16,7 +18,7 @@ const DEFAULT_MICROVICTORIES = [
   { id: 'mv10', label: 'Me acosté temprano' },
 ];
 
-function load(key, fallback) {
+function loadLS(key, fallback) {
   try {
     const val = localStorage.getItem(key);
     return val !== null ? JSON.parse(val) : fallback;
@@ -25,45 +27,84 @@ function load(key, fallback) {
   }
 }
 
-function save(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.error('localStorage write error', e);
-  }
-}
-
-export function AppProvider({ children }) {
+export function AppProvider({ children, uid }) {
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [activeDate, setActiveDate] = useState(getToday);
   const [currentView, setCurrentView] = useState('dashboard');
 
-  const [habits, setHabits] = useState(() => load('lt_habits', []));
-  const [habitLogs, setHabitLogs] = useState(() => load('lt_habitLogs', {}));
+  const [habits, setHabits] = useState([]);
+  const [habitLogs, setHabitLogs] = useState({});
+  const [todos, setTodos] = useState([]);
+  const [sleepLogs, setSleepLogs] = useState({});
+  const [microvictoriesBase, setMicrovictoriesBase] = useState(DEFAULT_MICROVICTORIES);
+  const [microvictoryLogs, setMicrovictoryLogs] = useState({});
+  const [diary, setDiary] = useState({});
+  const [userName, setUserNameState] = useState('Amigo');
+  const [events, setEvents] = useState([]);
 
-  const [todos, setTodos] = useState(() => load('lt_todos', []));
+  const saveTimer = useRef(null);
 
-  const [sleepLogs, setSleepLogs] = useState(() => load('lt_sleepLogs', {}));
+  // Load data from Firestore when user logs in
+  useEffect(() => {
+    if (!uid) return;
+    setDataLoaded(false);
 
-  const [microvictoriesBase, setMicrovictoriesBase] = useState(() =>
-    load('lt_microvictoriesBase', DEFAULT_MICROVICTORIES)
-  );
-  const [microvictoryLogs, setMicrovictoryLogs] = useState(() =>
-    load('lt_microvictoryLogs', {})
-  );
+    async function loadData() {
+      try {
+        const snap = await getDoc(doc(db, 'users', uid));
+        if (snap.exists()) {
+          const d = snap.data();
+          if (d.habits !== undefined) setHabits(d.habits);
+          if (d.habitLogs !== undefined) setHabitLogs(d.habitLogs);
+          if (d.todos !== undefined) setTodos(d.todos);
+          if (d.sleepLogs !== undefined) setSleepLogs(d.sleepLogs);
+          if (d.microvictoriesBase !== undefined) setMicrovictoriesBase(d.microvictoriesBase);
+          if (d.microvictoryLogs !== undefined) setMicrovictoryLogs(d.microvictoryLogs);
+          if (d.diary !== undefined) setDiary(d.diary);
+          if (d.userName !== undefined) setUserNameState(d.userName);
+          if (d.events !== undefined) setEvents(d.events);
+        } else {
+          // New user: migrate any existing localStorage data
+          const localDiary = loadLS('lt_diary', {});
+          const localHabits = loadLS('lt_habits', []);
+          const localTodos = loadLS('lt_todos', []);
+          const hasLocalData =
+            Object.keys(localDiary).length > 0 ||
+            localHabits.length > 0 ||
+            localTodos.length > 0;
+          if (hasLocalData) {
+            setHabits(localHabits);
+            setHabitLogs(loadLS('lt_habitLogs', {}));
+            setTodos(localTodos);
+            setSleepLogs(loadLS('lt_sleepLogs', {}));
+            setMicrovictoriesBase(loadLS('lt_microvictoriesBase', DEFAULT_MICROVICTORIES));
+            setMicrovictoryLogs(loadLS('lt_microvictoryLogs', {}));
+            setDiary(localDiary);
+            setUserNameState(loadLS('lt_userName', 'Amigo'));
+            setEvents(loadLS('lt_events', []));
+          }
+        }
+      } catch (err) {
+        console.error('Error loading data from Firestore', err);
+      }
+      setDataLoaded(true);
+    }
 
-  const [diary, setDiary] = useState(() => load('lt_diary', {}));
-  const [userName, setUserNameState] = useState(() => load('lt_userName', 'Amigo'));
-  const [events, setEvents] = useState(() => load('lt_events', []));
+    loadData();
+  }, [uid]);
 
-  useEffect(() => save('lt_habits', habits), [habits]);
-  useEffect(() => save('lt_habitLogs', habitLogs), [habitLogs]);
-  useEffect(() => save('lt_todos', todos), [todos]);
-  useEffect(() => save('lt_sleepLogs', sleepLogs), [sleepLogs]);
-  useEffect(() => save('lt_microvictoriesBase', microvictoriesBase), [microvictoriesBase]);
-  useEffect(() => save('lt_microvictoryLogs', microvictoryLogs), [microvictoryLogs]);
-  useEffect(() => save('lt_diary', diary), [diary]);
-  useEffect(() => save('lt_userName', userName), [userName]);
-  useEffect(() => save('lt_events', events), [events]);
+  // Save to Firestore when data changes (debounced 1.5s)
+  useEffect(() => {
+    if (!uid || !dataLoaded) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      setDoc(doc(db, 'users', uid), {
+        habits, habitLogs, todos, sleepLogs,
+        microvictoriesBase, microvictoryLogs, diary, userName, events,
+      }).catch(err => console.error('Error saving to Firestore', err));
+    }, 1500);
+    return () => clearTimeout(saveTimer.current);
+  }, [habits, habitLogs, todos, sleepLogs, microvictoriesBase, microvictoryLogs, diary, userName, events, uid, dataLoaded]);
 
   // ── Habits ───────────────────────────────────────────────────────────────
   const addHabit = useCallback((data) => {
@@ -168,7 +209,6 @@ export function AppProvider({ children }) {
   }, []);
 
   const getTodosForDate = useCallback((date) => {
-    // Completed on this date OR created on this date and pending
     return todos.filter(t => {
       const created = t.createdAt?.slice(0, 10);
       const completed = t.completedAt?.slice(0, 10);
@@ -304,25 +344,19 @@ export function AppProvider({ children }) {
   }, []);
 
   const value = {
+    dataLoaded,
     activeDate, setActiveDate,
     currentView, setCurrentView,
-    // Habits
     habits, habitLogs,
     addHabit, updateHabit, deleteHabit, toggleHabitLog,
     getHabitStreak, getHabitMonthCompletion, getDayHabitCompletion,
-    // Todos
     todos, addTodo, updateTodo, deleteTodo, toggleTodo, getTodosForDate,
-    // Sleep
     sleepLogs, saveSleepLog, deleteSleepLog,
-    // Microvictories
     microvictoriesBase, microvictoryLogs,
     addMicrovictoryBase, updateMicrovictoryBase, deleteMicrovictoryBase,
     toggleMicrovictoryLog, addExtraMicrovictory, removeExtraMicrovictory,
-    // Diary
     diary, saveDiaryEntry,
-    // Events
     events, addEvent, updateEvent, deleteEvent, getEventsForDate,
-    // Settings
     userName, setUserName,
     exportData, importData, resetAllData,
   };
