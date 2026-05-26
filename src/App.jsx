@@ -7,6 +7,8 @@ import Todo from './components/Todo/Todo';
 import Sleep from './components/Sleep/Sleep';
 import Microvictories from './components/Microvictories/Microvictories';
 import Diary from './components/Diary/Diary';
+import Calendar from './components/Calendar/Calendar';
+import Progress from './components/Progress/Progress';
 import Settings from './components/Settings/Settings';
 import { useApp } from './context/AppContext';
 import styles from './App.module.css';
@@ -21,6 +23,8 @@ function AppContent() {
     sleep: <Sleep />,
     microvictories: <Microvictories />,
     diary: <Diary />,
+    calendar: <Calendar />,
+    progress: <Progress />,
     settings: <Settings />,
   };
 

@@ -53,6 +53,7 @@ export function AppProvider({ children }) {
 
   const [diary, setDiary] = useState(() => load('lt_diary', {}));
   const [userName, setUserNameState] = useState(() => load('lt_userName', 'Amigo'));
+  const [events, setEvents] = useState(() => load('lt_events', []));
 
   useEffect(() => save('lt_habits', habits), [habits]);
   useEffect(() => save('lt_habitLogs', habitLogs), [habitLogs]);
@@ -62,6 +63,7 @@ export function AppProvider({ children }) {
   useEffect(() => save('lt_microvictoryLogs', microvictoryLogs), [microvictoryLogs]);
   useEffect(() => save('lt_diary', diary), [diary]);
   useEffect(() => save('lt_userName', userName), [userName]);
+  useEffect(() => save('lt_events', events), [events]);
 
   // ── Habits ───────────────────────────────────────────────────────────────
   const addHabit = useCallback((data) => {
@@ -223,6 +225,33 @@ export function AppProvider({ children }) {
     });
   }, []);
 
+  // ── Events (Calendar) ────────────────────────────────────────────────────
+  const addEvent = useCallback((data) => {
+    setEvents(prev => [...prev, {
+      id: Date.now().toString(),
+      title: data.title,
+      date: data.date,
+      time: data.time || '',
+      description: data.description || '',
+      color: data.color || '#6366f1',
+      createdAt: new Date().toISOString(),
+    }]);
+  }, []);
+
+  const updateEvent = useCallback((id, updates) => {
+    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  }, []);
+
+  const deleteEvent = useCallback((id) => {
+    setEvents(prev => prev.filter(e => e.id !== id));
+  }, []);
+
+  const getEventsForDate = useCallback((date) => {
+    return events
+      .filter(e => e.date === date)
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  }, [events]);
+
   // ── Diary ─────────────────────────────────────────────────────────────────
   const saveDiaryEntry = useCallback((date, content) => {
     const words = content.trim().split(/\s+/).filter(w => w.length > 0);
@@ -238,7 +267,7 @@ export function AppProvider({ children }) {
   const exportData = useCallback(() => {
     const data = {
       habits, habitLogs, todos, sleepLogs,
-      microvictoriesBase, microvictoryLogs, diary, userName,
+      microvictoriesBase, microvictoryLogs, diary, userName, events,
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -248,7 +277,7 @@ export function AppProvider({ children }) {
     a.download = `life-tracker-${getToday()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [habits, habitLogs, todos, sleepLogs, microvictoriesBase, microvictoryLogs, diary, userName]);
+  }, [habits, habitLogs, todos, sleepLogs, microvictoriesBase, microvictoryLogs, diary, userName, events]);
 
   const importData = useCallback((raw) => {
     if (raw.habits !== undefined) setHabits(raw.habits);
@@ -259,6 +288,7 @@ export function AppProvider({ children }) {
     if (raw.microvictoryLogs !== undefined) setMicrovictoryLogs(raw.microvictoryLogs);
     if (raw.diary !== undefined) setDiary(raw.diary);
     if (raw.userName !== undefined) setUserNameState(raw.userName);
+    if (raw.events !== undefined) setEvents(raw.events);
   }, []);
 
   const resetAllData = useCallback(() => {
@@ -270,6 +300,7 @@ export function AppProvider({ children }) {
     setMicrovictoryLogs({});
     setDiary({});
     setUserNameState('Amigo');
+    setEvents([]);
   }, []);
 
   const value = {
@@ -289,6 +320,8 @@ export function AppProvider({ children }) {
     toggleMicrovictoryLog, addExtraMicrovictory, removeExtraMicrovictory,
     // Diary
     diary, saveDiaryEntry,
+    // Events
+    events, addEvent, updateEvent, deleteEvent, getEventsForDate,
     // Settings
     userName, setUserName,
     exportData, importData, resetAllData,

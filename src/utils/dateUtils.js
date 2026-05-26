@@ -89,6 +89,51 @@ export function isSameMonth(dateStr) {
   return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 }
 
+export function getMondayOfWeek(dateStr) {
+  const d = parseDate(dateStr);
+  const day = d.getDay(); // 0=Dom, 1=Lun...
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return formatDate(d);
+}
+
+export function getLastNWeekStarts(n) {
+  const monday = getMondayOfWeek(getToday());
+  const weeks = [];
+  for (let i = n - 1; i >= 0; i--) {
+    weeks.push(addDays(monday, -i * 7));
+  }
+  return weeks;
+}
+
+export function getWeekLabel(mondayStr) {
+  const d = parseDate(mondayStr);
+  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()].slice(0, 3)}`;
+}
+
+export function getMonthsOfYear(year) {
+  const months = [];
+  for (let m = 0; m < 12; m++) {
+    months.push({ year, month: m, label: MONTH_NAMES[m].slice(0, 3) });
+  }
+  return months;
+}
+
+export function getDaysOfMonth(year, month) {
+  const days = [];
+  const count = new Date(year, month + 1, 0).getDate();
+  for (let d = 1; d <= count; d++) {
+    days.push(`${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+  }
+  return days;
+}
+
+export function getFirstDayOfMonth(year, month) {
+  // 0=Dom 1=Lun... convert to Mon-first (0=Lun 6=Dom)
+  const day = new Date(year, month, 1).getDay();
+  return day === 0 ? 6 : day - 1;
+}
+
 export function getGreeting(name) {
   const hour = new Date().getHours();
   if (hour < 12) return `¡Buenos días, ${name}!`;

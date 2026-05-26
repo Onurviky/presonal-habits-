@@ -10,6 +10,8 @@ const NAV_ITEMS = [
   { id: 'sleep',          label: 'Sueño',            icon: '◐' },
   { id: 'microvictories', label: 'Microvictorias',   icon: '★' },
   { id: 'diary',          label: 'Diario',           icon: '✎' },
+  { id: 'calendar',       label: 'Calendario',       icon: '▦' },
+  { id: 'progress',       label: 'Progreso',         icon: '↗' },
   { id: 'settings',       label: 'Ajustes',          icon: '⚙' },
 ];
 
