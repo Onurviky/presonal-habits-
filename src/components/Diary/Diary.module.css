@@ -1,0 +1,185 @@
+.container {
+  max-width: 700px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.savedIndicator {
+  font-size: 12px;
+  color: var(--success);
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.savedIndicatorVisible {
+  opacity: 1;
+}
+
+.btnIcon {
+  background: rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 15px;
+  color: var(--text-secondary);
+  transition: background var(--transition);
+}
+
+.btnIcon:hover, .btnIconActive {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.searchPanel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.searchInput {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 9px 12px;
+  font-size: 14px;
+  width: 100%;
+  transition: border-color var(--transition);
+}
+
+.searchInput:focus {
+  border-color: var(--border-focus);
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.searchResults {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.searchItem {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.searchDate {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.searchSnippet {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.searchWords {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.searchEmpty {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 8px;
+}
+
+.editorCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.editorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.editorDate {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wordCount {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.editor {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  padding: 20px;
+  font-size: 15px;
+  line-height: 1.7;
+  resize: none;
+  min-height: 380px;
+  width: 100%;
+  font-family: var(--font);
+}
+
+.editor::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.entriesInfo {
+  display: flex;
+  gap: 24px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.entriesInfo strong {
+  color: var(--text-secondary);
+}
